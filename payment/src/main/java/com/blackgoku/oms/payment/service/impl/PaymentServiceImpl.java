@@ -9,16 +9,14 @@ import com.blackgoku.oms.payment.entity.Payment;
 import com.blackgoku.oms.payment.entity.PaymentAttempt;
 import com.blackgoku.oms.payment.entity.PaymentAttemptStatus;
 import com.blackgoku.oms.payment.entity.PaymentStatus;
-import com.blackgoku.oms.payment.exception.IdempotencyKeyConflictException;
-import com.blackgoku.oms.payment.exception.InvalidPaymentStateException;
-import com.blackgoku.oms.payment.exception.PaymentAlreadyExistsException;
-import com.blackgoku.oms.payment.exception.PaymentNotFoundException;
+import com.blackgoku.oms.payment.exception.*;
 import com.blackgoku.oms.payment.gateway.PaymentGateway;
 import com.blackgoku.oms.payment.gateway.PaymentGatewayResult;
 import com.blackgoku.oms.payment.gateway.PaymentGatewayStatus;
 import com.blackgoku.oms.payment.repository.PaymentAttemptRepository;
 import com.blackgoku.oms.payment.repository.PaymentRepository;
 import com.blackgoku.oms.payment.service.PaymentService;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,8 +67,16 @@ public class PaymentServiceImpl implements PaymentService {
             return toResponse(payment);
         }
 
-        OrderPaymentInfoResponse order =
-                orderClient.getOrder(request.orderId());
+        OrderPaymentInfoResponse order;
+
+        try {
+            order = orderClient.getOrder(request.orderId());
+        } catch (FeignException ex) {
+            throw new RemoteServiceException(
+                    "Order Service is unavailable",
+                    ex
+            );
+        }
 
         if (order == null) {
             throw new PaymentNotFoundException(
@@ -109,7 +115,14 @@ public class PaymentServiceImpl implements PaymentService {
 
         paymentAttemptRepository.save(attempt);
 
-        orderClient.markPaymentPending(order.id());
+        try {
+            orderClient.markPaymentPending(order.id());
+        } catch (FeignException ex) {
+            throw new RemoteServiceException(
+                    "Order Service is unavailable",
+                    ex
+            );
+        }
 
         return toResponse(savedPayment);
     }
@@ -143,9 +156,14 @@ public class PaymentServiceImpl implements PaymentService {
                     result.transactionId()
             );
 
-            orderClient.confirmPayment(
-                    payment.getOrderId()
-            );
+            try {
+                orderClient.confirmPayment(payment.getOrderId());
+            } catch (FeignException ex) {
+                throw new RemoteServiceException(
+                        "Order Service is unavailable",
+                        ex
+                );
+            }
 
         } else {
 
@@ -154,9 +172,14 @@ public class PaymentServiceImpl implements PaymentService {
                     result.failureReason()
             );
 
-            orderClient.markPaymentFailed(
-                    payment.getOrderId()
-            );
+            try {
+                orderClient.markPaymentFailed(payment.getOrderId());
+            } catch (FeignException ex) {
+                throw new RemoteServiceException(
+                        "Order Service is unavailable",
+                        ex
+                );
+            }
         }
 
         return toResponse(payment);

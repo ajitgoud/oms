@@ -15,6 +15,39 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(OrderServiceException.class)
+    public ResponseEntity<ApiErrorResponse> handleOrderServiceException(
+            OrderServiceException ex,
+            HttpServletRequest request
+    ) {
+        HttpStatus status = switch (ex.getStatus()) {
+            case 400 -> HttpStatus.BAD_REQUEST;
+            case 404 -> HttpStatus.NOT_FOUND;
+            case 409 -> HttpStatus.CONFLICT;
+            default -> HttpStatus.BAD_GATEWAY;
+        };
+
+        return build(
+                ex.getMessage(),
+                status,
+                request
+        );
+    }
+
+    @ExceptionHandler(RemoteServiceException.class)
+    public ResponseEntity<ApiErrorResponse> handleRemoteServiceException(
+            RemoteServiceException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                ex.getMessage(),
+                HttpStatus.BAD_GATEWAY,
+                request
+        );
+    }
+
+
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
             MethodArgumentNotValidException ex,

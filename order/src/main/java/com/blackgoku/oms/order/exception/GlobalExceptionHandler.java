@@ -16,6 +16,68 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(CustomerNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleCustomerNotFound(
+            CustomerNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND,
+                request
+        );
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleProductNotFound(
+            ProductNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND,
+                request
+        );
+    }
+
+    @ExceptionHandler(InventoryNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleInventoryNotFound(
+            InventoryNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND,
+                request
+        );
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ApiErrorResponse> handleInsufficientStock(
+            InsufficientStockException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                ex.getMessage(),
+                HttpStatus.CONFLICT,
+                request
+        );
+    }
+
+
+    @ExceptionHandler(RemoteServiceException.class)
+    public ResponseEntity<ApiErrorResponse> handleRemoteService(
+            RemoteServiceException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                ex.getMessage(),
+                HttpStatus.BAD_GATEWAY,
+                request
+        );
+    }
+
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationException(
             MethodArgumentNotValidException ex,

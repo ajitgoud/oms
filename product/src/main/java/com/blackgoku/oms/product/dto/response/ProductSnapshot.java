@@ -1,4 +1,4 @@
-package com.blackgoku.oms.product.dto.request;
+package com.blackgoku.oms.product.dto.response;
 
 import lombok.Builder;
 

@@ -1,70 +1,38 @@
 package com.blackgoku.oms.order.client;
 
+import com.blackgoku.oms.order.config.FeignConfig;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-@Component
-public class InventoryClient {
+@FeignClient(
+        name = "inventory-service",
+        configuration = FeignConfig.class
+)
+public interface InventoryClient {
 
-    private final RestClient restClient;
+    @PostMapping("/api/v1/inventory/{productId}/reserve")
+    void reserve(
+            @PathVariable("productId") Long productId,
+                 @RequestBody QuantityRequest request
+    );
 
-    public InventoryClient(@Value("${services.inventory.base-url}") String baseUrl) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    @PostMapping("/api/v1/inventory/{productId}/release")
+    void release(
+            @PathVariable("productId") Long productId,
+            @RequestBody QuantityRequest request
+    );
+
+    record QuantityRequest(Long quantity) {
+
     }
 
-    public void reserve(Long productId, Long quantity, Long orderId) {
-
-        try {
-
-            restClient.post().uri("/api/v1/inventory/{productId}/reserve", productId).header(HttpHeaders.AUTHORIZATION, getAuthorizationHeader()).body(new QuantityRequest(quantity)).retrieve().toBodilessEntity();
-
-        } catch (RestClientResponseException ex) {
-
-            if (ex.getStatusCode().value() == 409) {
-                throw new IllegalStateException("Unable to reserve inventory for product: " + productId);
-            }
-
-            if (ex.getStatusCode().value() == 404) {
-                throw new IllegalArgumentException("Inventory not found for product: " + productId);
-            }
-
-            throw new IllegalStateException("Inventory Service request failed", ex);
-        }
-    }
-
-    public void release(Long productId, Long quantity, Long orderId) {
-
-        try {
-
-            restClient.post()
-                    .uri("/api/v1/inventory/{productId}/release", productId)
-                    .header(HttpHeaders.AUTHORIZATION, getAuthorizationHeader())
-                    .body(new QuantityRequest(quantity))
-                    .retrieve()
-                    .toBodilessEntity();
-
-        } catch (RestClientResponseException ex) {
-
-            throw new IllegalStateException("Failed to release inventory for product: " + productId, ex);
-        }
-    }
-
-    private String getAuthorizationHeader() {
-
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-
-        if (attributes == null) {
-            throw new IllegalStateException("No HTTP request context available");
-        }
-
-        return attributes.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
-    }
-
-    private record QuantityRequest(Long quantity) {
-    }
 }

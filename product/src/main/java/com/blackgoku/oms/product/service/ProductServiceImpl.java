@@ -1,7 +1,7 @@
 package com.blackgoku.oms.product.service;
 
 import com.blackgoku.oms.product.dto.request.CreateProductRequest;
-import com.blackgoku.oms.product.dto.request.ProductSnapshot;
+import com.blackgoku.oms.product.dto.response.ProductSnapshot;
 import com.blackgoku.oms.product.dto.request.UpdateProductRequest;
 import com.blackgoku.oms.product.dto.response.ProductResponse;
 import com.blackgoku.oms.product.entity.Product;

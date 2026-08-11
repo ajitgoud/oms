@@ -22,14 +22,6 @@ security:
   jwt:
     secret: AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=
 
-services:
-  product:
-    base-url: http://localhost:8082
-  customer:
-    base-url: http://localhost:8083
-  inventory:
-    base-url: http://localhost:8084
-
 management:
   endpoints:
     web:

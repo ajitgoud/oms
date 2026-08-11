@@ -13,9 +13,11 @@ import com.blackgoku.oms.order.entity.OrderItem;
 import com.blackgoku.oms.order.entity.OrderStatus;
 import com.blackgoku.oms.order.exception.InvalidOrderStateException;
 import com.blackgoku.oms.order.exception.OrderNotFoundException;
+import com.blackgoku.oms.order.exception.RemoteServiceException;
 import com.blackgoku.oms.order.mapper.OrderMapper;
 import com.blackgoku.oms.order.repository.OrderRepository;
 import com.blackgoku.oms.order.service.OrderService;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -43,8 +45,11 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public OrderResponse create(CreateOrderRequest request) {
-
-        customerClient.validateCustomer(request.customerId());
+        try {
+            customerClient.validateCustomer(request.customerId());
+        } catch (FeignException ex) {
+            throw new RemoteServiceException("Customer Service is unavailable", ex);
+        }
 
         validateDuplicateProducts(request);
 
@@ -56,8 +61,12 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal subtotal = BigDecimal.ZERO;
 
         for (CreateOrderItemRequest itemRequest : request.items()) {
-
-            ProductSnapshot product = productClient.getSnapshot(itemRequest.productId());
+            ProductSnapshot product;
+            try {
+                product = productClient.getSnapshot(itemRequest.productId());
+            } catch (FeignException ex) {
+                throw new RemoteServiceException("Product Service is unavailable", ex);
+            }
 
             if (!product.active()) {
                 throw new InvalidOrderStateException("Product is inactive: " + product.id());
@@ -92,8 +101,14 @@ public class OrderServiceImpl implements OrderService {
         try {
 
             for (OrderItem item : savedOrder.getItems()) {
-                inventoryClient.reserve(item.getProductId(), item.getQuantity(), savedOrder.getId());
-                reservedItems.add(item);
+
+                try {
+                    inventoryClient.reserve(item.getProductId(), new InventoryClient.QuantityRequest(item.getQuantity()));//, savedOrder.getId());
+                    reservedItems.add(item);
+                } catch (FeignException ex) {
+                    throw new RemoteServiceException("Inventory Service is unavailable", ex);
+                }
+
             }
 
         } catch (RuntimeException ex) {
@@ -199,8 +214,11 @@ public class OrderServiceImpl implements OrderService {
     private void releaseInventory(Order order) {
 
         for (OrderItem item : order.getItems()) {
-
-            inventoryClient.release(item.getProductId(), item.getQuantity(), order.getId());
+            try {
+                inventoryClient.release(item.getProductId(), new InventoryClient.QuantityRequest(item.getQuantity()));//, order.getId());
+            } catch (FeignException ex) {
+                throw new RemoteServiceException("Inventory Service is unavailable", ex);
+            }
         }
     }
 
@@ -209,10 +227,11 @@ public class OrderServiceImpl implements OrderService {
         for (OrderItem item : reservedItems) {
 
             try {
-
-                inventoryClient.release(item.getProductId(), item.getQuantity(), orderId);
-
-            } catch (Exception compensationException) {
+                inventoryClient.release(item.getProductId(), new InventoryClient.QuantityRequest(item.getQuantity()));//, orderId);
+            }catch (FeignException ex) {
+                throw new RemoteServiceException("Inventory Service is unavailable", ex);
+            }
+            catch (Exception compensationException) {
 
                 /*
                  * Compensation failure is serious.

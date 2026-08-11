@@ -20,10 +20,6 @@ security:
     secret: AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=
     expiration-ms: 900000
 
-services:
-  order:
-    url: http://localhost:8085
-
 management:
   endpoints:
     web:
