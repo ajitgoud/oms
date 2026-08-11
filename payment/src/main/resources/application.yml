@@ -1,0 +1,42 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: payment-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/auth_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: true
+
+security:
+  jwt:
+    secret: AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=
+    expiration-ms: 900000
+
+services:
+  order:
+    url: http://localhost:8085
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+#    url: ${DB_URL:jdbc:postgresql://localhost:5432/auth_db}
+#    username: ${DB_USERNAME:postgres}
+#    password: ${DB_PASSWORD:postgres}

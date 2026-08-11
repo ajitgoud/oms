@@ -1,0 +1,9 @@
+server:
+  port: 8761
+spring:
+  application:
+    name: service-registery
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registery: false
