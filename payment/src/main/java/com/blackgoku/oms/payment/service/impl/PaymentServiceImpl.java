@@ -9,12 +9,17 @@ import com.blackgoku.oms.payment.entity.Payment;
 import com.blackgoku.oms.payment.entity.PaymentAttempt;
 import com.blackgoku.oms.payment.entity.PaymentAttemptStatus;
 import com.blackgoku.oms.payment.entity.PaymentStatus;
+import com.blackgoku.oms.payment.event.EventEnvelope;
+import com.blackgoku.oms.payment.event.EventType;
+import com.blackgoku.oms.payment.event.PaymentFailedEvent;
+import com.blackgoku.oms.payment.event.PaymentSuccessEvent;
 import com.blackgoku.oms.payment.exception.*;
 import com.blackgoku.oms.payment.gateway.PaymentGateway;
 import com.blackgoku.oms.payment.gateway.PaymentGatewayResult;
 import com.blackgoku.oms.payment.gateway.PaymentGatewayStatus;
 import com.blackgoku.oms.payment.repository.PaymentAttemptRepository;
 import com.blackgoku.oms.payment.repository.PaymentRepository;
+import com.blackgoku.oms.payment.service.OutboxService;
 import com.blackgoku.oms.payment.service.PaymentService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +40,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentAttemptRepository paymentAttemptRepository;
     private final OrderClient orderClient;
     private final PaymentGateway paymentGateway;
+    private final OutboxService outboxService;
 
     @Transactional
     @Override
@@ -156,14 +164,23 @@ public class PaymentServiceImpl implements PaymentService {
                     result.transactionId()
             );
 
-            try {
-                orderClient.confirmPayment(payment.getOrderId());
-            } catch (FeignException ex) {
-                throw new RemoteServiceException(
-                        "Order Service is unavailable",
-                        ex
-                );
-            }
+            PaymentSuccessEvent event = PaymentSuccessEvent.builder()
+                            .paymentId(payment.getId())
+                            .orderId(payment.getOrderId())
+                            .amount(payment.getAmount())
+                            .transactionId(result.transactionId())
+                            .build();
+
+            EventEnvelope<PaymentSuccessEvent> envelope = EventEnvelope.<PaymentSuccessEvent>builder()
+                            .eventId(UUID.randomUUID())
+                            .eventType(EventType.PAYMENT_SUCCESS.name())
+                            .aggregateType("PAYMENT")
+                            .aggregateId(payment.getId())
+                            .occurredAt(Instant.now())
+                            .payload(event)
+                            .build();
+
+            outboxService.save(envelope);
 
         } else {
 
@@ -172,14 +189,22 @@ public class PaymentServiceImpl implements PaymentService {
                     result.failureReason()
             );
 
-            try {
-                orderClient.markPaymentFailed(payment.getOrderId());
-            } catch (FeignException ex) {
-                throw new RemoteServiceException(
-                        "Order Service is unavailable",
-                        ex
-                );
-            }
+            PaymentFailedEvent event = PaymentFailedEvent.builder()
+                    .paymentId(payment.getId())
+                    .orderId(payment.getOrderId())
+                    .reason(result.failureReason())
+                    .build();
+
+            EventEnvelope<PaymentFailedEvent> envelope = EventEnvelope.<PaymentFailedEvent>builder()
+                    .eventId(UUID.randomUUID())
+                    .eventType(EventType.PAYMENT_FAILED.name())
+                    .aggregateType("PAYMENT")
+                    .aggregateId(payment.getId())
+                    .occurredAt(Instant.now())
+                    .payload(event)
+                    .build();
+
+            outboxService.save(envelope);
         }
 
         return toResponse(payment);

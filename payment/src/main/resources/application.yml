@@ -15,6 +15,15 @@ spring:
     open-in-view: false
     show-sql: true
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.StringSerializer
+
+      group-id: payment-service
+      auto-offset-reset: earliest
+
 security:
   jwt:
     secret: AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcd=

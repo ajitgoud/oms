@@ -8,15 +8,19 @@ import com.blackgoku.oms.order.dto.request.CreateOrderRequest;
 import com.blackgoku.oms.order.dto.response.OrderResponse;
 import com.blackgoku.oms.order.dto.response.OrderSummaryResponse;
 import com.blackgoku.oms.order.dto.response.ProductSnapshot;
+import com.blackgoku.oms.order.entity.EventType;
 import com.blackgoku.oms.order.entity.Order;
 import com.blackgoku.oms.order.entity.OrderItem;
 import com.blackgoku.oms.order.entity.OrderStatus;
 import com.blackgoku.oms.order.exception.InvalidOrderStateException;
 import com.blackgoku.oms.order.exception.OrderNotFoundException;
 import com.blackgoku.oms.order.exception.RemoteServiceException;
+import com.blackgoku.oms.order.kafka.EventEnvelope;
+import com.blackgoku.oms.order.kafka.OrderCreatedEvent;
 import com.blackgoku.oms.order.mapper.OrderMapper;
 import com.blackgoku.oms.order.repository.OrderRepository;
 import com.blackgoku.oms.order.service.OrderService;
+import com.blackgoku.oms.order.service.OutboxService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,10 +29,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.time.Instant;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +43,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductClient productClient;
     private final InventoryClient inventoryClient;
     private final OrderMapper orderMapper;
+    private final OutboxService outboxService;
 
     @Transactional
     @Override
@@ -118,6 +121,22 @@ public class OrderServiceImpl implements OrderService {
 
         savedOrder.markInventoryReserved();
         savedOrder.markPaymentPending();
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .orderId(savedOrder.getId())
+                .customerId(savedOrder.getCustomerId())
+                .total(savedOrder.getTotal())
+                .build();
+
+        EventEnvelope<OrderCreatedEvent> envelope = EventEnvelope.<OrderCreatedEvent>builder()
+                .eventId(UUID.randomUUID())
+                .eventType(EventType.ORDER_CREATED.name())
+                .aggregateId(savedOrder.getId())
+                .aggregateType("ORDER")
+                .occurredAt(Instant.now())
+                .payload(event)
+                .build();
+
+        outboxService.save(envelope);
 
         return orderMapper.toResponse(savedOrder);
     }

@@ -1,8 +1,9 @@
 package com.blackgoku.oms.order.config;
 
-import com.blackgoku.oms.inventory.exception.InsufficientStockException;
-import com.blackgoku.oms.inventory.exception.InventoryNotFoundException;
-import com.blackgoku.oms.product.exception.ProductNotFoundException;
+import com.blackgoku.oms.order.exception.CustomerNotFoundException;
+import com.blackgoku.oms.order.exception.InsufficientStockException;
+import com.blackgoku.oms.order.exception.InventoryNotFoundException;
+import com.blackgoku.oms.order.exception.ProductNotFoundException;
 import feign.Response;
 import feign.codec.ErrorDecoder;
 
